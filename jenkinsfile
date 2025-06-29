@@ -26,24 +26,26 @@ pipeline {
                 sh 'mvn package -DskipTests'
             }
         }
-
         stage('Publish Artifact to JFrog') {
-            steps {
-                script {
-                    def server = Artifactory.server("${ARTIFACTORY_SERVER_ID}")
-                    def uploadSpec = """{
-                        "files": [
-                            {
-                                "pattern": "target/*.jar",
-                                "target": "libs-release-local/spring-petclinic/"
-                            }
-                        ]
-                    }"""
-                    server.upload spec: uploadSpec
-                    server.publishBuildInfo()
-                }
-            }
+    steps {
+        script {
+            def server = Artifactory.server("${ARTIFACTORY_SERVER_ID}")
+
+            def uploadSpec = """{
+                "files": [
+                    {
+                        "pattern": "target/*.jar",
+                        "target": "libs-release-local/spring-petclinic/"
+                    }
+                ]
+            }"""
+
+            def buildInfo = server.upload spec: uploadSpec
+            server.publishBuildInfo buildInfo
         }
+    }
+}
+
 
         stage('Deploy or Notify') {
             steps {
