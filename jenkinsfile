@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_SERVER = 'MySonarQube'
-        ARTIFACTORY_SERVER = 'MyArtifactory'
+        SONARQUBE_SERVER = 'MySonarQube'         // SonarQube server ID from Jenkins config
+        ARTIFACTORY_SERVER_ID = 'my-jfrog-artifactory' // Artifactory server ID from Jenkins config
     }
 
     stages {
@@ -30,7 +30,8 @@ pipeline {
         stage('Publish Artifact to JFrog') {
             steps {
                 script {
-                    def server = Artifactory.server("${ARTIFACTORY_SERVER}")
+                    def server = Artifactory.server("${ARTIFACTORY_SERVER_ID}")
+
                     def uploadSpec = """{
                         "files": [
                             {
@@ -39,14 +40,16 @@ pipeline {
                             }
                         ]
                     }"""
+
                     server.upload spec: uploadSpec
+                    server.publishBuildInfo()
                 }
             }
         }
 
         stage('Deploy or Notify') {
             steps {
-                echo 'Your artifact is built and uploaded!'
+                echo 'Artifact built and uploaded to JFrog Artifactory.'
             }
         }
     }
