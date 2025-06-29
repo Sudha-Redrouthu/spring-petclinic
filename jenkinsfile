@@ -1,0 +1,65 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven 3.8.6'
+        jdk 'JDK11'
+    }
+
+    environment {
+        SONARQUBE_SERVER = 'MySonarQube'
+        ARTIFACTORY_SERVER = 'MyArtifactory'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/Sudha-Redrouthu/spring-petclinic.git'
+            }
+        }
+
+        stage('Code Quality - SonarQube') {
+            steps {
+                withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                    sh 'mvn clean verify sonar:sonar'
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn package -DskipTests'
+            }
+        }
+
+        stage('Publish Artifact to JFrog') {
+            steps {
+                script {
+                    def server = Artifactory.server("${ARTIFACTORY_SERVER}")
+                    def uploadSpec = """{
+                        "files": [
+                            {
+                                "pattern": "target/*.jar",
+                                "target": "libs-release-local/spring-petclinic/"
+                            }
+                        ]
+                    }"""
+                    server.upload spec: uploadSpec
+                }
+            }
+        }
+
+        stage('Deploy or Notify') {
+            steps {
+                echo 'Your artifact is built and uploaded!'
+                // Add deployment or Slack/email notification here
+            }
+        }
+    }
+
+    post {
+        always {
+            junit 'target/surefire-reports/*.xml'
+        }
+    }
+}
