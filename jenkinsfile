@@ -7,11 +7,11 @@ pipeline {
         ARTIFACTORY_SERVER = 'MyArtifactory'
     }
 
-stage('Checkout') {
-    steps {
-        git branch: 'main', url: 'https://github.com/Sudha-Redrouthu/spring-petclinic.git'
-    }
-}
+        stage('Checkout') {
+            steps {
+               git branch: 'main', url: 'https://github.com/Sudha-Redrouthu/spring-petclinic.git'
+             }
+           }
 
         stage('Code Quality - SonarQube') {
             steps {
