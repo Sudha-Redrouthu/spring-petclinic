@@ -1,13 +1,60 @@
 pipeline {
     agent any
+
+    environment {
+        SONARQUBE_SERVER = 'MySonarQube'               // Must match Jenkins global Sonar config
+        ARTIFACTORY_SERVER_ID = 'my-jfrog-artifactory' // Must match JFrog Server ID in Jenkins
+    }
+
     stages {
-        stage('Test Artifactory Connection') {
+        stage('Checkout') {
             steps {
-                script {
-                    def server = Artifactory.server('my-jfrog-artifactory')
-                    echo "JFrog Server ID loaded: ${server}"
+                git branch: 'main', url: 'https://github.com/Sudha-Redrouthu/spring-petclinic.git'
+            }
+        }
+
+        stage('Code Quality - SonarQube') {
+            steps {
+                withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                    sh 'mvn clean verify sonar:sonar'
                 }
             }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn package -DskipTests'
+            }
+        }
+
+        stage('Publish Artifact to JFrog') {
+            steps {
+                script {
+                    def server = Artifactory.server("${ARTIFACTORY_SERVER_ID}")
+                    def uploadSpec = """{
+                        "files": [
+                            {
+                                "pattern": "target/*.jar",
+                                "target": "libs-release-local/spring-petclinic/"
+                            }
+                        ]
+                    }"""
+                    server.upload spec: uploadSpec
+                    server.publishBuildInfo()
+                }
+            }
+        }
+
+        stage('Deploy or Notify') {
+            steps {
+                echo 'Artifact built and uploaded to JFrog Artifactory.'
+            }
+        }
+    }
+
+    post {
+        always {
+            junit 'target/surefire-reports/*.xml'
         }
     }
 }
