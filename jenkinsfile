@@ -1,17 +1,22 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven 3.8.6'
+        jdk 'JDK11'
+    }
 
     environment {
         SONARQUBE_SERVER = 'MySonarQube'
         ARTIFACTORY_SERVER = 'MyArtifactory'
     }
 
+    stages {
         stage('Checkout') {
             steps {
-               git branch: 'main', url: 'https://github.com/Sudha-Redrouthu/spring-petclinic.git'
-             }
-           }
+                git branch: 'main', url: 'https://github.com/Sudha-Redrouthu/spring-petclinic.git'
+            }
+        }
 
         stage('Code Quality - SonarQube') {
             steps {
@@ -47,7 +52,6 @@ pipeline {
         stage('Deploy or Notify') {
             steps {
                 echo 'Your artifact is built and uploaded!'
-                // Add deployment or Slack/email notification here
             }
         }
     }
