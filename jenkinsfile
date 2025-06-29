@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_SERVER = 'MySonarQube'         // SonarQube server ID from Jenkins config
-        ARTIFACTORY_SERVER_ID = 'my-jfrog-artifactory' // Artifactory server ID from Jenkins config
+        SONARQUBE_SERVER = 'MySonarQube'              // Jenkins SonarQube server ID
+        ARTIFACTORY_SERVER_ID = 'my-jfrog-artifactory' // Jenkins Artifactory Server ID
     }
 
     stages {
@@ -41,8 +41,8 @@ pipeline {
                         ]
                     }"""
 
-                    server.upload spec: uploadSpec
-                    server.publishBuildInfo()
+                    def buildInfo = server.upload spec: uploadSpec
+                    server.publishBuildInfo buildInfo
                 }
             }
         }
@@ -57,6 +57,7 @@ pipeline {
     post {
         always {
             junit 'target/surefire-reports/*.xml'
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
         }
     }
 }
