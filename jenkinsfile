@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven 3.8.6'
-        jdk 'JDK11'
-    }
-
     environment {
         SONARQUBE_SERVER = 'MySonarQube'
         ARTIFACTORY_SERVER = 'MyArtifactory'
