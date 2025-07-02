@@ -1,0 +1,29 @@
+trigger:
+  branches:
+    include:
+      - main  # or your actual branch name
+
+variables:
+  imageName: 'spring-petclinic'
+
+stages:
+- stage: BuildAndPush
+  displayName: 'Build and Push Docker Image to ACR'
+  jobs:
+  - job: DockerBuild
+    displayName: 'Build and Push to Azure Container Registry'
+    pool:
+      vmImage: 'ubuntu-latest'
+
+    steps:
+    - checkout: self
+
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'azureconnection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az acr login --name sudhapetclinic01
+          docker build -t YOUR-ACR-NAME.azurecr.io/$(imageName):$(Build.BuildId) .
+          docker push YOUR-ACR-NAME.azurecr.io/$(imageName):$(Build.BuildId)
