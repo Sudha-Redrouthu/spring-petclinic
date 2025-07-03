@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = 'dockerhub-creds' // Jenkins credential ID (username + password/token)
-        IMAGE_NAME = 'yourdockerhubusername/spring-petclinic'
+        DOCKERHUB_CREDENTIALS = 'docker_creds' // Jenkins credential ID (username + password/token)
+        IMAGE_NAME = 'sudharedroutu2210/spring-petclinic'
     }
 
     stages {
