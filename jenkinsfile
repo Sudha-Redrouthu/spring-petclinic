@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_SERVER = 'MySonarQube'               // Must match Jenkins global Sonar config
-        ARTIFACTORY_SERVER_ID = 'my-jfrog-artifactory' // Must match JFrog Server ID in Jenkins
+        DOCKERHUB_CREDENTIALS = 'dockerhub-creds' // Jenkins credential ID (username + password/token)
+        IMAGE_NAME = 'yourdockerhubusername/spring-petclinic'
     }
 
     stages {
@@ -13,55 +13,37 @@ pipeline {
             }
         }
 
-        stage('Code Quality - SonarQube') {
+        stage('Build JAR') {
             steps {
-                withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                    sh 'mvn clean verify sonar:sonar'
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    def buildTag = "v${env.BUILD_NUMBER}"
+                    sh "docker build -t ${IMAGE_NAME}:${buildTag} ."
                 }
             }
         }
 
-        stage('Build') {
+        stage('Push to Docker Hub') {
             steps {
-                sh 'mvn package -DskipTests'
-            }
-        }
-        stage('Publish Artifact to JFrog') {
-    steps {
-        script {
-            def server = Artifactory.server("${ARTIFACTORY_SERVER_ID}")
-
-            def uploadSpec = """{
-                "files": [
-                    {
-                        "pattern": "target/*.jar",
-                        "target": "libs-release-local/spring-petclinic/"
+                script {
+                    def buildTag = "v${env.BUILD_NUMBER}"
+                    withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}", usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                        sh "echo $PASSWORD | docker login -u $USERNAME --password-stdin"
+                        sh "docker push ${IMAGE_NAME}:${buildTag}"
                     }
-                ]
-            }"""
-
-            def buildInfo = server.upload spec: uploadSpec
-            server.publishBuildInfo buildInfo
+                }
+            }
         }
-    }
-}
 
-
-        stage('Deploy or Notify') {
+        stage('Notify') {
             steps {
-                echo 'Artifact built and uploaded to JFrog Artifactory.'
+                echo "App built and image pushed to Docker Hub"
             }
         }
     }
-
-    post {
-    always {
-        junit 'target/surefire-reports/*.xml'
-    }
-
-    success {
-        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-    }
-}
-
 }
