@@ -1,15 +1,11 @@
-# Stage 1: Build the application
-FROM maven:3.9.7-eclipse-temurin-17 AS builder
+# Use an OpenJDK image
+FROM openjdk:17-jdk-slim
 
+# Set work directory
 WORKDIR /app
-COPY . .
-RUN mvn clean package -DskipTests
 
-# Stage 2: Run the application
-FROM eclipse-temurin:17-jdk
+# Copy the built jar
+COPY target/spring-petclinic-*.jar app.jar
 
-WORKDIR /app
-COPY --from=builder /app/target/*.jar app.jar
-
-EXPOSE 8080
+# Run the app
 ENTRYPOINT ["java", "-jar", "app.jar"]
