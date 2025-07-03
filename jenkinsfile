@@ -1,9 +1,14 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'maven:3.8.7-openjdk-17' // or a version compatible with your Spring Boot project
+            args '-v $HOME/.m2:/root/.m2' // optional: cache maven dependencies
+        }
+    }
 
     environment {
-        SONARQUBE_SERVER = 'MySonarQube'               // Must match Jenkins global Sonar config
-        ARTIFACTORY_SERVER_ID = 'my-jfrog-artifactory' // Must match JFrog Server ID in Jenkins
+        SONARQUBE_SERVER = 'MySonarQube'
+        ARTIFACTORY_SERVER_ID = 'my-jfrog-artifactory'
         DOCKER_IMAGE_NAME = 'yourdockerhubuser/spring-petclinic'
     }
 
