@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKERHUB_CREDENTIALS = 'docker_creds' // Jenkins credential ID (username + password/token)
-        IMAGE_NAME = 'sudharedroutu2210/spring-petclinic'
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -15,34 +10,23 @@ pipeline {
 
         stage('Build JAR') {
             steps {
-                sh 'mvn clean package -DskipTests'
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
                 script {
-                    def buildTag = "v${env.BUILD_NUMBER}"
-                    sh "docker build -t ${IMAGE_NAME}:${buildTag} ."
-                }
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            steps {
-                script {
-                    def buildTag = "v${env.BUILD_NUMBER}"
-                    withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}", usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                        sh "echo $PASSWORD | docker login -u $USERNAME --password-stdin"
-                        sh "docker push ${IMAGE_NAME}:${buildTag}"
+                    docker.image('maven:3.8.7-openjdk-17').inside {
+                        sh 'mvn clean package -DskipTests'
                     }
                 }
             }
         }
 
+        stage('Archive JAR') {
+            steps {
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            }
+        }
+
         stage('Notify') {
             steps {
-                echo "App built and image pushed to Docker Hub"
+                echo "✅ Build complete. JAR archived."
             }
         }
     }
