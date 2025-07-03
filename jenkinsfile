@@ -21,7 +21,7 @@ pipeline {
                         withSonarQubeEnv("${SONARQUBE_SERVER}") {
                             sh 'mvn clean verify sonar:sonar'
                         }
-                        sh 'mvn package -DskipTests'
+                        sh 'mvn clean verify'
                     }
                 }
             }
