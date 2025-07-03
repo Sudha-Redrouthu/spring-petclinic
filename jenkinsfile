@@ -4,6 +4,7 @@ pipeline {
     environment {
         SONARQUBE_SERVER = 'MySonarQube'               // Must match Jenkins global Sonar config
         ARTIFACTORY_SERVER_ID = 'my-jfrog-artifactory' // Must match JFrog Server ID in Jenkins
+        DOCKER_IMAGE_NAME = 'yourdockerhubuser/spring-petclinic'
     }
 
     stages {
@@ -21,47 +22,75 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build JAR') {
             steps {
                 sh 'mvn package -DskipTests'
             }
         }
+
         stage('Publish Artifact to JFrog') {
-    steps {
-        script {
-            def server = Artifactory.server("${ARTIFACTORY_SERVER_ID}")
-
-            def uploadSpec = """{
-                "files": [
-                    {
-                        "pattern": "target/*.jar",
-                        "target": "libs-release-local/spring-petclinic/"
-                    }
-                ]
-            }"""
-
-            def buildInfo = server.upload spec: uploadSpec
-            server.publishBuildInfo buildInfo
-        }
-    }
-}
-
-
-        stage('Deploy or Notify') {
             steps {
-                echo 'Artifact built and uploaded to JFrog Artifactory.'
+                script {
+                    def server = Artifactory.server("${ARTIFACTORY_SERVER_ID}")
+
+                    def uploadSpec = """{
+                        "files": [
+                            {
+                                "pattern": "target/*.jar",
+                                "target": "libs-release-local/spring-petclinic/"
+                            }
+                        ]
+                    }"""
+
+                    def buildInfo = server.upload spec: uploadSpec
+                    server.publishBuildInfo buildInfo
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    IMAGE_TAG = "${env.BUILD_NUMBER}"
+                    IMAGE_FULL = "${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
+                }
+
+                sh 'docker build -t $IMAGE_FULL .'
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    docker push $IMAGE_FULL
+                    '''
+                }
+            }
+        }
+
+        stage('Save Image Tag') {
+            steps {
+                writeFile file: 'image-tag.txt', text: "${env.BUILD_NUMBER}"
+                archiveArtifacts artifacts: 'image-tag.txt', fingerprint: true
+            }
+        }
+
+        stage('Notify or Final Step') {
+            steps {
+                echo "Docker image $DOCKER_IMAGE_NAME:${env.BUILD_NUMBER} pushed successfully"
             }
         }
     }
 
     post {
-    always {
-        junit 'target/surefire-reports/*.xml'
-    }
+        always {
+            junit 'target/surefire-reports/*.xml'
+        }
 
-    success {
-        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+        success {
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+        }
     }
-}
-
 }
