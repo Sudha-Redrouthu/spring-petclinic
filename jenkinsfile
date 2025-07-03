@@ -1,10 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'maven:3.8.7-openjdk-17' // or a version compatible with your Spring Boot project
-            args '-v $HOME/.m2:/root/.m2' // optional: cache maven dependencies
-        }
-    }
+    agent any
 
     environment {
         SONARQUBE_SERVER = 'MySonarQube'
@@ -19,17 +14,16 @@ pipeline {
             }
         }
 
-        stage('Code Quality - SonarQube') {
+        stage('Code Quality - SonarQube & Build') {
             steps {
-                withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                    sh 'mvn clean verify sonar:sonar'
+                script {
+                    docker.image('maven:3.8.7-openjdk-17').inside {
+                        withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                            sh 'mvn clean verify sonar:sonar'
+                        }
+                        sh 'mvn package -DskipTests'
+                    }
                 }
-            }
-        }
-
-        stage('Build JAR') {
-            steps {
-                sh 'mvn package -DskipTests'
             }
         }
 
@@ -58,9 +52,8 @@ pipeline {
                 script {
                     IMAGE_TAG = "${env.BUILD_NUMBER}"
                     IMAGE_FULL = "${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker build -t $IMAGE_FULL ."
                 }
-
-                sh 'docker build -t $IMAGE_FULL .'
             }
         }
 
@@ -69,7 +62,7 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
                     echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    docker push $IMAGE_FULL
+                    docker push $DOCKER_IMAGE_NAME:${BUILD_NUMBER}
                     '''
                 }
             }
@@ -82,9 +75,9 @@ pipeline {
             }
         }
 
-        stage('Notify or Final Step') {
+        stage('Notify') {
             steps {
-                echo "Docker image $DOCKER_IMAGE_NAME:${env.BUILD_NUMBER} pushed successfully"
+                echo "Successfully pushed Docker image: $DOCKER_IMAGE_NAME:${env.BUILD_NUMBER}"
             }
         }
     }
@@ -93,7 +86,6 @@ pipeline {
         always {
             junit 'target/surefire-reports/*.xml'
         }
-
         success {
             archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
         }
