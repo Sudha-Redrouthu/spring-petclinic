@@ -83,11 +83,18 @@ pipeline {
     }
 
     post {
-        always {
-            junit 'target/surefire-reports/*.xml'
-        }
-        success {
-            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+    always {
+        script {
+            if (fileExists('target/surefire-reports')) {
+                junit 'target/surefire-reports/*.xml'
+            } else {
+                echo 'No test reports found to archive.'
+            }
         }
     }
+    success {
+        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+    }
+}
+
 }
