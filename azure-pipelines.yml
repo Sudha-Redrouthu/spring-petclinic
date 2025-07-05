@@ -25,5 +25,5 @@ stages:
         scriptLocation: 'inlineScript'
         inlineScript: |
           az acr login --name sudhapetclinic01
-          docker build -t YOUR-ACR-NAME.azurecr.io/$(imageName):$(Build.BuildId) .
-          docker push YOUR-ACR-NAME.azurecr.io/$(imageName):$(Build.BuildId)
+          docker build -t sudhapetclinic01.azurecr.io/$(imageName):$(Build.BuildId) .
+          docker push sudhapetclinic01.azurecr.io/$(imageName):$(Build.BuildId)
