@@ -47,3 +47,32 @@ stages:
         tags: |
           latest
           $(Build.BuildId)
+- stage: Deploy
+  displayName: 'Deploy to AKS'
+  dependsOn: BuildAndPush
+  jobs:
+  - deployment: DeployApp
+    displayName: 'Deploy to AKS Cluster'
+    environment: 'dev'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: 'azureconnection'  # Azure service connection
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az aks get-credentials \
+                  --resource-group petclinic-rg-dev \
+                  --name petclinic-aks-dev \
+                  --overwrite-existing
+
+                kubectl apply -f k8s/deployment.yaml
+                kubectl apply -f k8s/service.yaml
+
