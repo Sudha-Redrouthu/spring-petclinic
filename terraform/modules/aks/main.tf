@@ -16,7 +16,12 @@ resource "azurerm_kubernetes_cluster" "aks" {
     type = "SystemAssigned"
   }
 
-  network_profile {
-    network_plugin = "azure"
-  }
+ network_profile {
+  network_plugin     = "azure"
+  service_cidr       = "10.1.0.0/16"        # ✅ Must NOT overlap with VNet/Subnet
+  dns_service_ip     = "10.1.0.10"          # ✅ Must be within service_cidr
+  docker_bridge_cidr = "172.17.0.1/16"
+ }
+
+
 }
