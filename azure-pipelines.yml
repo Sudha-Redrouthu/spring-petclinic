@@ -5,26 +5,46 @@ trigger:
 
 variables:
   imageName: 'spring-petclinic'
+  dockerRegistry: '<your-jfrog-registry-url>'     # e.g. sudha.jfrog.io
+  dockerRepo: '<your-jfrog-repo>'                 # e.g. docker-local
 
 stages:
 - stage: BuildAndPush
-  displayName: 'Build and Push Docker Image to ACR'
+  displayName: 'Build, Analyze, and Push Docker Image to JFrog'
   jobs:
-  - job: DockerBuild
-    displayName: 'Build Docker Image and Push to ACR'
+  - job: Build
+    displayName: 'Build and Push to JFrog'
     pool:
       vmImage: 'ubuntu-latest'
 
     steps:
     - checkout: self
 
-    - task: AzureCLI@2
+    - task: Maven@3
       inputs:
-        azureSubscription: 'azureconnection'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          az acr login --name sudhapetclinic01
+        mavenPomFile: 'pom.xml'
+        goals: 'clean package'
+        publishJUnitResults: true
 
-          docker build -t sudhapetclinic01.azurecr.io/$(imageName):$(Build.BuildId) .
-          docker push sudhapetclinic01.azurecr.io/$(imageName):$(Build.BuildId)
+    - task: SonarQubePrepare@5
+      inputs:
+        SonarQube: 'SonarQubeServiceConnection'
+        scannerMode: 'CLI'
+        configMode: 'manual'
+        cliProjectKey: 'spring-petclinic'
+        cliProjectName: 'Spring PetClinic'
+        extraProperties: |
+          sonar.java.binaries=target/classes
+
+    - script: mvn sonar:sonar
+      displayName: 'Run SonarQube Analysis'
+
+    - task: Docker@2
+      inputs:
+        containerRegistry: 'JFrogDockerConnection'  # Service connection to JFrog
+        repository: '$(dockerRepo)/$(imageName)'
+        command: 'buildAndPush'
+        Dockerfile: '**/Dockerfile'
+        tags: |
+          latest
+          $(Build.BuildId)
